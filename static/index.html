@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Calendar Assistant — MCP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg-1: #f3fbfb;
+      --bg-2: #eaf7ff;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #0b86a3;
+      --accent-2: #6f55ff;
+      --shadow: 0 10px 30px rgba(18,38,63,0.08);
+      --input-border: #e6eef6;
+      --title-color: #07313a;
+      --dot: #0b86a3;
+      --success: #16a34a;
+    }
+    html,body { height:100%; margin:0; font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%); color:var(--title-color); }
+
+    .wrap { max-width: 1100px; margin: 36px auto; padding: 0 18px; }
+    header { display:flex; align-items:center; gap:14px; margin-bottom: 18px; }
+    .logo { width:56px; height:56px; border-radius:12px; background: linear-gradient(135deg,var(--accent),#0f5f6c); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:18px; box-shadow: 0 8px 22px rgba(11,134,163,0.12); }
+    h1 { font-size:20px; margin:0; letter-spacing:-0.2px; color:var(--accent); }
+    h2 { margin:0; color:#0f2230; opacity:0.85; font-weight:600; font-size:14px; }
+
+    .main {
+      display:grid;
+      grid-template-columns: 240px 1fr;
+      gap:18px;
+      margin-top:14px;
+    }
+
+    .card { background: var(--card); border-radius:12px; padding:14px; box-shadow: var(--shadow); border: 1px solid rgba(14,30,40,0.04); }
+
+    .mini {
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .month-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .month-title { font-weight:700; color:var(--title-color); }
+    .month-nav button { background:none; border:0; cursor:pointer; padding:6px 8px; border-radius:8px; color:var(--muted); }
+    .month-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:8px; opacity:1; transition: opacity .18s ease; }
+    .day {
+      height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+      cursor:pointer; font-size:13px; color:#08303a; position:relative;
+      transition: transform .12s ease, box-shadow .12s;
+    }
+    .day:hover { transform: translateY(-4px); box-shadow: 0 8px 18px rgba(11,134,163,0.06); }
+    .day.today { border:1px dashed rgba(11,134,163,0.22); }
+    .day.selected { background: linear-gradient(180deg, rgba(111,85,255,0.12), rgba(11,134,163,0.06)); font-weight:700; color:var(--accent); box-shadow: 0 8px 18px rgba(111,85,255,0.06); }
+    .day.inactive { color:#b7c7cf; cursor:default; transform:none; }
+    .event-dot { position:absolute; bottom:6px; width:6px; height:6px; border-radius:50%; background:var(--dot); box-shadow:0 2px 4px rgba(11,134,163,0.12); }
+
+    .top-panel { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .label { font-size:13px; color:var(--muted); font-weight:700; margin-bottom:8px; display:block; }
+    .small { width:120px; min-width:120px; }
+    .medium { width:240px; min-width:160px; }
+    input[type="date"], input[type="time"], select, input[type="text"] {
+      padding:10px 12px; border-radius:10px; border:1px solid var(--input-border); background:#fbfeff; font-size:14px; color:var(--title-color); outline:none; transition: box-shadow .12s ease, transform .06s; min-height:40px;
+    }
+    input:focus, select:focus { box-shadow: 0 8px 24px rgba(15,49,58,0.06); transform: translateY(-1px); }
+
+    .title-wrap { position:relative; flex:1; display:flex; align-items:center; }
+    .title-wrap input[type="text"] { width:100%; padding-left:40px; background:linear-gradient(180deg,#ffffff,#fbfdff); border:1px solid var(--input-border); box-shadow: 0 2px 10px rgba(15,49,58,0.03); min-height:40px; }
+    .title-icon { position:absolute; left:10px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px; background: linear-gradient(180deg,#f4fbff,#eef8fb); color:var(--accent); font-weight:700; box-shadow:0 3px 8px rgba(11,134,163,0.05); }
+
+    .btn { padding:10px 14px; border-radius:12px; border:none; cursor:pointer; background: linear-gradient(180deg,var(--accent-2), #4b36ff); color:white; font-weight:700; font-size:14px; box-shadow: 0 12px 30px rgba(79,63,255,0.14); transition: transform .12s cubic-bezier(.2,.9,.3,1), box-shadow .12s, filter .12s; position:relative; overflow:visible; }
+    .btn:hover { transform: translateY(-6px); filter:brightness(1.03); box-shadow: 0 24px 60px rgba(79,63,255,0.18); }
+    .btn::after { content:""; position:absolute; left:-10px; right:-10px; top:-10px; bottom:-10px; border-radius:14px; pointer-events:none; opacity:0; box-shadow: 0 0 36px 10px rgba(111,85,255,0.12); transition:opacity .12s; }
+    .btn:hover::after { opacity:1; }
+
+    .result { margin-top:10px; font-size:14px; padding:12px; border-radius:10px; background: linear-gradient(180deg,#fbfdff,#f7fbfb); border: 1px solid var(--input-border); min-height:64px; color:#0b2230; white-space:pre-wrap; transition: box-shadow .12s, transform .12s; }
+    .result.pulse { animation: pulse 900ms ease-out; }
+    @keyframes pulse { 0% { transform: scale(.995); box-shadow: 0 0 0 rgba(22,163,110,0.0) } 50% { transform: scale(1.01); box-shadow: 0 12px 40px rgba(22,163,110,0.12) } 100% { transform: scale(1); box-shadow: 0 6px 22px rgba(22,163,110,0.06) } }
+
+    .ev-item { padding:10px; border-radius:8px; margin-bottom:8px; background: linear-gradient(180deg,#fff,#fbfeff); border:1px solid var(--input-border); opacity:0; transform: translateY(8px); animation: evIn .34s ease forwards; }
+    .ev-meta { font-weight:700; color:#08303a; }
+    .ev-sub { color:var(--muted); font-size:13px; margin-top:6px; }
+    @keyframes evIn { to { opacity:1; transform: translateY(0); } }
+
+    @media (max-width:980px) {
+      .main { grid-template-columns: 1fr; }
+      .mini { order:2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">CA</div>
+      <div>
+        <h1>Calendar Assistant — MCP</h1>
+        <h2 style="color:#0b6b7a;">Smart scheduling via MCP</h2>
+      </div>
+    </header>
+
+    <div class="main">
+      <aside class="card mini" aria-label="Mini calendar">
+        <div class="month-head">
+          <div class="month-title" id="monthTitle">Month</div>
+          <div class="month-nav">
+            <button id="prevMonth" title="Previous month">‹</button>
+            <button id="nextMonth" title="Next month">›</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-size:12px;color:var(--muted);margin-top:8px;">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+
+        <div class="month-grid" id="monthGrid"></div>
+
+        <div style="margin-top:8px;color:var(--muted);font-size:13px;">
+          <div id="miniHint">Click a day to choose it.</div>
+        </div>
+      </aside>
+
+      <section>
+        <div class="card">
+          <label class="label">Choose day <span style="font-weight:600;color:var(--muted)">(DD-MM-YYYY)</span></label>
+          <div class="top-panel" style="align-items:center; gap:12px;">
+            <input id="day" type="date" class="small" />
+            <button id="showBtn" class="btn">Show events</button>
+          </div>
+          <div id="events" class="result" aria-live="polite"></div>
+        </div>
+
+        <div class="card" style="margin-top:14px;">
+          <label class="label">Book a Slot</label>
+          <div class="row" style="align-items:center; gap:12px;">
+            <input id="book_day" type="date" class="small" />
+            <input id="book_time" type="time" class="small" />
+            <select id="duration" class="duration">
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60" selected>60 min</option>
+              <option value="90">90 min</option>
+            </select>
+
+            <div class="title-wrap">
+              <div class="title-icon">✦</div>
+              <input id="title" type="text" placeholder="Event title — e.g. Board sync" class="medium" />
+            </div>
+
+            <button id="bookBtn" class="btn">Find & Book</button>
+          </div>
+
+          <div id="result" class="result" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const rpcUrl = "/jsonrpc";
+    async function jsonrpc(method, params){
+      const resp = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method, params, id: 1 })
+      });
+      return resp.json();
+    }
+
+    function pad(n){ return n.toString().padStart(2,'0'); }
+    function fmtDateTime(iso){
+      if(!iso) return "";
+      return iso.replace("T"," ").replace(/:00$/,"").trim();
+    }
+
+    const monthGrid = document.getElementById("monthGrid");
+    const monthTitle = document.getElementById("monthTitle");
+    const prevBtn = document.getElementById("prevMonth");
+    const nextBtn = document.getElementById("nextMonth");
+
+    let viewDate = new Date();
+    let monthRenderToken = 0;
+
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+
+    async function fetchDaysWithEvents(dt){
+      const start = startOfMonth(dt);
+      const end = endOfMonth(dt);
+      const set = new Set();
+      let cur = new Date(start);
+      while (cur <= end) {
+        const dayISO = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+        try {
+          const r = await jsonrpc("get_events_for_day", { day: dayISO });
+          if (!r.error && r.result && r.result.length) set.add(dayISO);
+        } catch(e){
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return set;
+    }
+
+    async function renderMonth(dt) {
+      const myToken = ++monthRenderToken;
+
+      monthGrid.style.opacity = "0.02";
+      await new Promise(r => setTimeout(r, 120));
+      if (myToken !== monthRenderToken) return;
+
+      monthGrid.innerHTML = "";
+      monthTitle.innerText = dt.toLocaleString(undefined, { month: "long", year: "numeric" });
+
+      const first = startOfMonth(dt);
+      const last = endOfMonth(dt);
+      const startWeekday = first.getDay();
+
+      for (let i = 0; i < startWeekday; i++) {
+        const el = document.createElement("div");
+        el.className = "day inactive";
+        monthGrid.appendChild(el);
+      }
+
+      for (let d = 1; d <= last.getDate(); d++) {
+        const el = document.createElement("div");
+        el.className = "day";
+        el.innerText = d;
+        const isoForCell = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+        const today = new Date();
+        if (today.getFullYear() === dt.getFullYear() && today.getMonth() === dt.getMonth() && today.getDate() === d) {
+          el.classList.add("today");
+        }
+
+        el.addEventListener("click", () => {
+          document.getElementById("day").value = isoForCell;
+          document.getElementById("book_day").value = isoForCell;
+          document.querySelectorAll(".day").forEach(x => x.classList.remove("selected"));
+          el.classList.add("selected");
+          document.getElementById("showBtn").click();
+        });
+
+        monthGrid.appendChild(el);
+      }
+
+      fetchDaysWithEvents(dt).then(daysWithEvents => {
+        if (myToken !== monthRenderToken) return; 
+
+        monthGrid.querySelectorAll(".event-dot").forEach(n => n.remove());
+
+        const blanks = startWeekday;
+        const cells = Array.from(monthGrid.querySelectorAll(".day"));
+        for (let idx = 0; idx < cells.length; idx++) {
+          const dayNum = idx - blanks + 1;
+          if (dayNum > 0 && dayNum <= last.getDate()) {
+            const iso = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`;
+            if (daysWithEvents.has(iso)) {
+
+              if (!cells[idx].querySelector(".event-dot")) {
+                const dot = document.createElement("div");
+                dot.className = "event-dot";
+                cells[idx].appendChild(dot);
+              }
+            }
+          }
+        }
+      }).catch(e => {
+        console.warn("Failed to fetch month events:", e);
+      });
+
+      monthGrid.style.opacity = "1";
+    }
+
+    prevBtn.addEventListener("click", ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); renderMonth(viewDate); });
+    nextBtn.addEventListener("click", ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1); renderMonth(viewDate); });
+
+    async function showEventsForDay(dayIso){
+      const eventsEl = document.getElementById("events");
+      eventsEl.innerHTML = "Loading…";
+      const r = await jsonrpc("get_events_for_day", { day: dayIso });
+      if(r.error){ eventsEl.innerText = "Error: "+JSON.stringify(r.error); return; }
+      const evs = r.result || [];
+      if(evs.length===0){ eventsEl.innerText = "No events for " + dayIso; return; }
+
+      eventsEl.innerHTML = "";
+      for(let e of evs){
+        const it = document.createElement("div");
+        it.className = "ev-item";
+        const meta = document.createElement("div");
+        meta.className = "ev-meta";
+        meta.innerText = `${fmtDateTime(e.start)}  -  ${e.title}`;
+        const sub = document.createElement("div");
+        sub.className = "ev-sub";
+        sub.innerText = `Attendees: ${ (e.attendees && e.attendees.length) ? e.attendees.join(", ") : "—" }`;
+        it.appendChild(meta); it.appendChild(sub);
+        eventsEl.appendChild(it);
+        await new Promise(res => setTimeout(res, 70));
+      }
+
+      renderMonth(viewDate);
+    }
+
+    document.getElementById("showBtn").addEventListener("click", async ()=>{
+      const day = document.getElementById("day").value || new Date().toISOString().slice(0,10);
+      await showEventsForDay(day);
+    });
+
+    document.getElementById("bookBtn").addEventListener("click", async ()=>{
+      const day = document.getElementById("book_day").value || new Date().toISOString().slice(0,10);
+      const time = document.getElementById("book_time").value || "09:00";
+      const duration = parseInt(document.getElementById("duration").value || "60");
+      const title = document.getElementById("title").value || "Booked via UI";
+      const resEl = document.getElementById("result");
+
+      const [hh,mm] = (time || "09:00").split(":");
+      const dt = new Date(`${day}T${pad(hh)}:${pad(mm)}:00`);
+      const dtEnd = new Date(dt.getTime() + duration*60000);
+      function localIso(d){ const Y=d.getFullYear(), M=pad(d.getMonth()+1), D=pad(d.getDate()), H=pad(d.getHours()), Min=pad(d.getMinutes()), S=pad(d.getSeconds()); return `${Y}-${M}-${D}T${H}:${Min}:${S}`; }
+      const startIso=localIso(dt), endIso=localIso(dtEnd);
+
+      resEl.innerText = "Booking " + title + " ...";
+
+      try{
+        const createResp = await jsonrpc("create_event", { title, start: startIso, end: endIso, attendees: [] });
+        if(createResp.error){ resEl.innerText = "Error creating event: " + JSON.stringify(createResp.error); return; }
+        const ev = createResp.result;
+        const confirmation = `Hi! Your "${ev.title}" is scheduled for ${fmtDateTime(ev.start)} - ${fmtDateTime(ev.end)}.`;
+
+        resEl.innerText = `Event created:\n${fmtDateTime(ev.start)}  -  ${fmtDateTime(ev.end)}\n\nConfirmation\n\n${confirmation}`;
+        resEl.classList.remove("pulse");
+        void resEl.offsetWidth;
+        resEl.classList.add("pulse");
+
+        renderMonth(viewDate);
+        await showEventsForDay(day);
+      }catch(err){
+        resEl.innerText = "Network error: "+err;
+      }
+    });
+
+    function dateISO(d){ return d.toISOString().slice(0,10); }
+    const tomorrow = new Date(Date.now() + 24*3600*1000);
+    document.getElementById("day").value = dateISO(tomorrow);
+    document.getElementById("book_day").value = dateISO(tomorrow);
+    document.getElementById("book_time").value = "09:00";
+
+    (async ()=>{
+      viewDate = new Date();
+      await renderMonth(viewDate);
+    })();
+  </script>
+</body>
+</html>
